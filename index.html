@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101827">
+<title>GPS Treasure Hunt</title>
+<style>
+:root{--bg:#101827;--panel:#192538;--text:#f4f7fb;--muted:#9fb0c7;--mint:#65f0bd;--gold:#ffd166;--danger:#ff7b7b}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 0%,#253d55 0,#101827 52%);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+main{width:min(100%,520px);margin:auto;padding:20px 16px 30px}
+header{display:flex;justify-content:space-between;align-items:center;margin:4px 0 18px}
+.logo{font-size:12px;letter-spacing:2px;color:var(--mint);font-weight:800}.level{font-size:12px;color:var(--muted);border:1px solid #33445b;border-radius:99px;padding:7px 10px}
+h1{font-size:32px;line-height:1.05;margin:8px 0 10px;letter-spacing:-1px}.sub{color:var(--muted);line-height:1.5;margin:0 0 20px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.stat,.panel{background:#192538;border:1px solid #2b3b51;border-radius:18px;padding:14px}
+.stat small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}.stat strong{display:block;font-size:24px;margin-top:4px}
+.map{position:relative;height:270px;border-radius:22px;overflow:hidden;border:1px solid #34465c;background-color:#17283a;background-image:linear-gradient(30deg,transparent 48%,#294056 49%,#294056 51%,transparent 52%),linear-gradient(120deg,transparent 48%,#294056 49%,#294056 51%,transparent 52%);background-size:88px 88px;margin-bottom:14px}
+.road{position:absolute;background:#344a60;border:1px solid #40576d;border-radius:20px;opacity:.8}.r1{width:140%;height:22px;left:-20%;top:42%;transform:rotate(-20deg)}.r2{width:130%;height:18px;left:-10%;top:67%;transform:rotate(28deg)}.r3{height:130%;width:18px;left:67%;top:-15%;transform:rotate(18deg)}
+.you{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:18px;height:18px;background:#62c9ff;border:4px solid white;border-radius:50%;box-shadow:0 0 0 10px #62c9ff30,0 0 25px #62c9ff90;z-index:3}
+.treasure{position:absolute;transform:translate(-50%,-50%);font-size:27px;filter:drop-shadow(0 4px 8px #0008);z-index:2;transition:all .3s}
+.maplabel{position:absolute;left:13px;top:12px;background:#101827d9;border:1px solid #33445b;border-radius:10px;padding:7px 9px;font-size:11px;color:#c8d5e5;z-index:4}
+.mapfoot{position:absolute;right:12px;bottom:12px;background:#101827d9;border:1px solid #33445b;border-radius:10px;padding:7px 9px;font-size:11px;color:#c8d5e5;z-index:4}
+button{border:0;border-radius:14px;padding:15px 16px;font:700 15px system-ui;cursor:pointer;width:100%;background:var(--mint);color:#092219;box-shadow:0 7px 20px #65f0bd20}
+button.secondary{background:#26374d;color:#f4f7fb;border:1px solid #3a4d65;box-shadow:none}
+button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.status{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 2px 16px;min-height:38px}
+.panel h2{font-size:16px;margin:0 0 8px}.panel p{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
+.mission{display:flex;gap:12px;align-items:center}.orb{width:46px;height:46px;border-radius:14px;background:#2e4653;display:grid;place-items:center;font-size:24px;flex-shrink:0}
+.mission strong{display:block;font-size:14px}.mission small{color:var(--muted);font-size:12px}
+footer{text-align:center;color:#7f91a9;font-size:11px;margin-top:20px;line-height:1.5}
+@media(min-height:850px){main{padding-top:30px}.map{height:310px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">FIELD QUEST / 001</div><div class="level">EXPLORER · LV 1</div></header>
+<h1>GPS Treasure<br>Hunt <span style="color:var(--mint)">✦</span></h1>
+<p class="sub">Explore your real world. Find hidden crystals. Collect XP as you move.</p>
+<section class="stats">
+  <div class="stat"><small>Crystals</small><strong id="score">0</strong></div>
+  <div class="stat"><small>XP</small><strong id="xp">0</strong></div>
+  <div class="stat"><small>GPS accuracy</small><strong id="accuracy">—</strong></div>
+</section>
+<div class="map" id="map" aria-label="Simplified game radar">
+  <div class="road r1"></div><div class="road r2"></div><div class="road r3"></div>
+  <div class="maplabel" id="mapLabel">RADAR OFFLINE</div>
+  <div class="you" title="Your position"></div>
+  <div class="mapfoot" id="distanceLabel">Find crystals within 30 m</div>
+</div>
+<button id="startBtn">📍 Start GPS Adventure</button>
+<div class="actions">
+  <button class="secondary" id="scanBtn" disabled>⌁ Scan Nearby</button>
+  <button class="secondary" id="resetBtn">↻ New Run</button>
+</div>
+<div class="status" id="status" role="status">Tap “Start GPS Adventure” and allow location access. Best used outdoors with a clear view of the sky.</div>
+<section class="panel">
+  <div class="mission">
+    <div class="orb">💎</div>
+    <div><strong id="missionTitle">Mission: First Crystal</strong><small id="missionText">Find a crystal within 30 metres.</small></div>
+  </div>
+</section>
+<footer>Prototype game · Location is processed in this browser only.<br>Walk safely, obey local rules, and never enter private or unsafe areas to collect a crystal.</footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let watchId = null, pos = null, crystals = [], score = 0, xp = 0, runStarted = false;
+  const RADIUS = 30;
+  const status = msg => $('status').textContent = msg;
+  const rand = (min,max) => Math.random()*(max-min)+min;
+  function distance(a,b) {
+    const rad = n => n*Math.PI/180;
+    const dLat=rad(b.lat-a.lat), dLon=rad(b.lon-a.lon);
+    const x=Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+    return 6371000*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  }
+  function offsetPoint(origin, metres, bearing) {
+    const R=6378137, br=bearing*Math.PI/180, lat1=origin.lat*Math.PI/180, lon1=origin.lon*Math.PI/180, d=metres/R;
+    const lat2=Math.asin(Math.sin(lat1)*Math.cos(d)+Math.cos(lat1)*Math.sin(d)*Math.cos(br));
+    const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+    return {lat:lat2*180/Math.PI,lon:lon2*180/Math.PI};
+  }
+  function spawnCrystals() {
+    crystals = [];
+    for(let i=0;i<5;i++) crystals.push({...offsetPoint(pos,rand(25,110),rand(0,360)),id:i,found:false});
+    drawCrystals();
+  }
+  function drawCrystals() {
+    document.querySelectorAll('.treasure').forEach(e=>e.remove());
+    if(!pos) return;
+    const visible = crystals.filter(c=>!c.found);
+    visible.forEach(c=>{
+      const d=distance(pos,c);
+      const angle=Math.atan2(c.lon-pos.lon,c.lat-pos.lat);
+      const x=50+Math.sin(angle)*Math.min(35,Math.max(9,d/3));
+      const y=52-Math.cos(angle)*Math.min(35,Math.max(9,d/3));
+      const el=document.createElement('div'); el.className='treasure'; el.textContent='💎';
+      el.style.left=x+'%'; el.style.top=y+'%'; el.title=Math.round(d)+' metres away';
+      $('map').appendChild(el);
+    });
+    $('distanceLabel').textContent = visible.length ? visible.length+' crystals on radar' : 'Area cleared!';
+  }
+  function updatePosition(p) {
+    pos={lat:p.coords.latitude,lon:p.coords.longitude};
+    $('accuracy').textContent=Math.round(p.coords.accuracy)+'m';
+    $('mapLabel').textContent='GPS LOCKED';
+    $('scanBtn').disabled=false;
+    if(!runStarted){runStarted=true;spawnCrystals();status('GPS locked. Crystals are on your radar—walk toward one and scan when you are close.');}
+    else drawCrystals();
+    checkNearby();
+  }
+  function checkNearby() {
+    if(!pos) return;
+    const close=crystals.filter(c=>!c.found && distance(pos,c)<=RADIUS);
+    if(close.length) {
+      close.forEach(c=>c.found=true);
+      score+=close.length; xp+=close.length*25;
+      $('score').textContent=score; $('xp').textContent=xp;
+      drawCrystals();
+      $('missionTitle').textContent=score>=5?'Mission complete!':'Crystal secured!';
+      $('missionText').textContent=score>=5?'Great exploring. Start a new run to find more.':'+'+(close.length*25)+' XP earned. Keep exploring!';
+      status('✨ Crystal collected! +' +(close.length*25)+' XP. Keep moving to discover more.');
+      if(crystals.every(c=>c.found)) {status('Area cleared! Tap “New Run” to place a fresh set of crystals around you.');$('scanBtn').disabled=true;}
+    }
+  }
+  $('startBtn').addEventListener('click',()=>{
+    if(!('geolocation' in navigator)){status('GPS location is not supported by this browser. Try a modern mobile browser.');return;}
+    if(!window.isSecureContext && location.hostname!=='localhost'){status('Location requires a secure HTTPS website. Open this game from an HTTPS host on your phone.');return;}
+    $('startBtn').disabled=true; $('startBtn').textContent='⌁ Locating…';
+    status('Waiting for GPS. Allow location permission if your browser asks.');
+    watchId=navigator.geolocation.watchPosition(updatePosition,err=>{
+      const messages={1:'Location permission was denied. Allow location access in your browser settings.',2:'GPS position unavailable. Try moving outdoors.',3:'GPS timed out. Try again in an open area.'};
+      status(messages[err.code]||'Could not get GPS location. Please try again.');
+      $('startBtn').disabled=false;$('startBtn').textContent='📍 Try GPS Again';
+    },{enableHighAccuracy:true,maximumAge:3000,timeout:20000});
+  });
+  $('scanBtn').addEventListener('click',()=>{
+    if(!pos)return;
+    const remaining=crystals.filter(c=>!c.found);
+    if(!remaining.length){status('No crystals left in this run. Tap New Run.');return;}
+    const nearest=remaining.map(c=>({c,d:distance(pos,c)})).sort((a,b)=>a.d-b.d)[0];
+    if(nearest.d<=RADIUS){checkNearby();}
+    else status('Nearest crystal is about '+Math.round(nearest.d)+' m away. Keep moving toward the radar marker, then scan again.');
+  });
+  $('resetBtn').addEventListener('click',()=>{
+    score=0;xp=0;runStarted=false;crystals=[];
+    $('score').textContent='0';$('xp').textContent='0';
+    $('missionTitle').textContent='Mission: First Crystal';$('missionText').textContent='Find a crystal within 30 metres.';
+    if(pos){spawnCrystals();runStarted=true;status('New run started! Five crystals have appeared nearby.');}
+    else status('Tap Start GPS Adventure to get your location and begin.');
+    $('scanBtn').disabled=!pos;
+  });
+})();
+</script>
+</body>
+</html>
